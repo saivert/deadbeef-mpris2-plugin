@@ -13,10 +13,11 @@ struct MprisData {
 	DB_functions_t *deadbeef;
 	DB_artwork_plugin_t *artwork;
 	GDBusNodeInfo *gdbusNodeInfo;
+	int ownerId;
 };
 
-void* startServer(void*);
-void stopServer(void);
+void startServer(struct MprisData *);
+void stopServer(struct MprisData *);
 
 void emitVolumeChanged(float);
 void emitSeeked(float);

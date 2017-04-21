@@ -83,7 +83,6 @@ static const char xmlForNode[] =
 	"</node>";
 
 static GDBusConnection *globalConnection = NULL;
-static GMainLoop *loop;
 
 static gboolean bytecodeCompiled;
 
@@ -190,7 +189,7 @@ GVariant* getMetadataForTrack(int track_id, struct MprisData *mprisData) {
 		deadbeef->plt_unref(pl);
 	}
 
-	if (track != NULL) {
+	if (track != NULL && id >= 0) {
 		char buf[500];
 		int buf_size = sizeof(buf);
 		int64_t duration = deadbeef->pl_get_item_duration(track) * 1000000;
@@ -660,6 +659,7 @@ static const GDBusInterfaceVTable playerInterfaceVTable = {
 //* SIGNALS *
 //***********
 void emitVolumeChanged(float volume) {
+	if (!globalConnection) return;
 	GVariantBuilder *builder = g_variant_builder_new(G_VARIANT_TYPE_ARRAY);
 	volume = (volume * 0.02) + 1;
 	debug("Volume property changed: %f", volume);
@@ -678,6 +678,7 @@ void emitVolumeChanged(float volume) {
 }
 
 void emitSeeked(float position) {
+	if (!globalConnection) return;
 	int64_t positionInMicroseconds = position * 1000000.0;
 	debug("Seeked to %" PRId64, positionInMicroseconds);
 
@@ -686,6 +687,7 @@ void emitSeeked(float position) {
 }
 
 void emitMetadataChanged(int trackId, struct MprisData *userData) {
+	if (!globalConnection) return;
 	GVariantBuilder *builder = g_variant_builder_new(G_VARIANT_TYPE_ARRAY);
 
 	g_variant_builder_add(builder, "{sv}", "Metadata", getMetadataForTrack(trackId, userData));
@@ -722,6 +724,7 @@ void emitCanGoChanged(struct MprisData *userData) {
 }
 
 void emitPlaybackStatusChanged(int status, struct MprisData *userData) {
+	if (!globalConnection) return;
 	GVariantBuilder *builder = g_variant_builder_new(G_VARIANT_TYPE_ARRAY);
 	DB_functions_t *deadbeef = ((struct MprisData *)userData)->deadbeef;
 
@@ -754,6 +757,7 @@ void emitPlaybackStatusChanged(int status, struct MprisData *userData) {
 }
 
 void emitLoopStatusChanged(int status) {
+	if (!globalConnection) return;
 	GVariantBuilder *builder = g_variant_builder_new(G_VARIANT_TYPE_ARRAY);
 
 	switch (status) {
@@ -783,6 +787,7 @@ void emitLoopStatusChanged(int status) {
 }
 
 void emitShuffleStatusChanged(int status) {
+	if (!globalConnection) return;
 	GVariantBuilder *builder = g_variant_builder_new(G_VARIANT_TYPE_ARRAY);
 
 	g_variant_builder_add(builder, "{sv}", "Shuffle", g_variant_new_boolean(status != PLAYBACK_ORDER_LINEAR));
@@ -819,20 +824,16 @@ static void onConnotConnectToBus(GDBusConnection *connection, const char *name, 
 	error("cannot connect to bus");
 }
 
-void* startServer(void *data) {
-	int ownerId;
-	GMainContext *context = g_main_context_new();
+void startServer(struct MprisData *data) {
 	struct MprisData *mprisData = data;
-
-
-	g_main_context_push_thread_default(context);
 
 	mprisData->gdbusNodeInfo = g_dbus_node_info_new_for_xml(xmlForNode, NULL);
 
-	ownerId = g_bus_own_name(G_BUS_TYPE_SESSION, BUS_NAME, G_BUS_NAME_OWNER_FLAGS_REPLACE,
+	mprisData->ownerId = g_bus_own_name(G_BUS_TYPE_SESSION, BUS_NAME, G_BUS_NAME_OWNER_FLAGS_REPLACE,
                              onBusAcquiredHandler, onNameAcquiredHandler, onConnotConnectToBus,
                              (void *)mprisData, NULL);
 
+<<<<<<< HEAD
 	loop = g_main_loop_new(context, FALSE);
 	g_main_loop_run(loop);
 
@@ -843,9 +844,13 @@ void* startServer(void *data) {
 	freeTfBytecode(mprisData->deadbeef);
 
 	return 0;
+=======
+	return;
+>>>>>>> 3509670... Try without threading code. Much cleaner.
 }
 
-void stopServer() {
+void stopServer(struct MprisData *mprisData) {
 	debug("Stopping...");
-	g_main_loop_quit(loop);
+	g_bus_unown_name(mprisData->ownerId);
+	g_dbus_node_info_unref(mprisData->gdbusNodeInfo);
 }
