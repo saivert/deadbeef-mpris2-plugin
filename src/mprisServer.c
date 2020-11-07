@@ -705,6 +705,7 @@ void emitMetadataChanged(int trackId, struct MprisData *userData) {
 }
 
 void emitCanGoChanged(struct MprisData *userData) {
+	if (!globalConnection) return;
 	GVariantBuilder *builder = g_variant_builder_new(G_VARIANT_TYPE_ARRAY);
 
 	g_variant_builder_add(builder, "{sv}", "CanPlay", g_variant_new_boolean(deadbeef_hasselectedorplayingtrack(userData, 0)));
@@ -833,24 +834,15 @@ void startServer(struct MprisData *data) {
                              onBusAcquiredHandler, onNameAcquiredHandler, onConnotConnectToBus,
                              (void *)mprisData, NULL);
 
-<<<<<<< HEAD
-	loop = g_main_loop_new(context, FALSE);
-	g_main_loop_run(loop);
 
-	g_bus_unown_name(ownerId);
-	g_dbus_node_info_unref(mprisData->gdbusNodeInfo);
-	g_main_loop_unref(loop);
 
-	freeTfBytecode(mprisData->deadbeef);
 
 	return 0;
-=======
-	return;
->>>>>>> 3509670... Try without threading code. Much cleaner.
 }
 
 void stopServer(struct MprisData *mprisData) {
 	debug("Stopping...");
+	freeTfBytecode(mprisData->deadbeef);
 	g_bus_unown_name(mprisData->ownerId);
 	g_dbus_node_info_unref(mprisData->gdbusNodeInfo);
 }
